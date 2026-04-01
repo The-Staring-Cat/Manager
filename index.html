@@ -9,7 +9,7 @@
     <style>
         :root { --bg: #0a0a0a; --card: #171717; --silver: #e5e5e5; --border: #262626; --accent: #d4d4d8; --danger: #ef4444; --success: #22c55e; --gold: #f59e0b; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--silver); margin: 0; padding: 20px; line-height: 1.6; }
-        .container { max-width: 1300px; margin: auto; opacity: 0; transition: opacity 0.5s ease; display: none; }
+        .container { max-width: 1400px; margin: auto; opacity: 0; transition: opacity 0.5s ease; display: none; }
         .container.visible { opacity: 1; display: block; }
         
         #terminalAuth { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
@@ -24,19 +24,20 @@
         .btn:hover { opacity: 0.8; transform: translateY(-1px); }
         .btn-outline { background: transparent; color: var(--silver); border: 1px solid var(--border); }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
         
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 20px; }
-        th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 10px 5px; font-weight: 400; }
-        td { padding: 12px 5px; border-bottom: 1px solid #1f1f1f; }
+        th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 12px 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 14px 8px; border-bottom: 1px solid #1f1f1f; }
         
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 50; backdrop-filter: blur(4px); overflow-y: auto; }
-        .modal-content { background: var(--card); margin: 2% auto; padding: 30px; border: 1px solid var(--border); max-width: 480px; border-radius: 12px; }
+        .modal-content { background: var(--card); margin: 2% auto; padding: 30px; border: 1px solid var(--border); max-width: 500px; border-radius: 12px; }
         
-        label { display: block; font-size: 0.65rem; color: #737373; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; }
-        input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; }
+        label { display: block; font-size: 0.65rem; color: #737373; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; font-weight: 600; }
+        input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; font-family: inherit; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .status-pill { padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -44,7 +45,7 @@
     <div id="terminalAuth">
         <div class="terminal-box">
             <h2 style="margin-bottom: 20px;">RATIONAL EDGE <span style="font-weight: 300;">TERMINAL</span></h2>
-            <input type="password" id="pinInput" placeholder="ACCESS PIN" style="text-align: center; letter-spacing: 4px;">
+            <input type="password" id="pinInput" placeholder="ENTER ACCESS PIN" style="text-align: center; letter-spacing: 4px;">
             <br><br>
             <button class="btn" onclick="authenticate()">INITIALIZE</button>
         </div>
@@ -58,11 +59,11 @@
 
         <div class="stats-bar">
             <div class="stat-card">
-                <label>Total Life-Time Earnings</label>
+                <label>Total Life-Time Revenue</label>
                 <div class="stat-val" id="totalEarnings">$0.00</div>
             </div>
             <div class="stat-card">
-                <label>Active Subscriptions</label>
+                <label>Total Active Clients</label>
                 <div class="stat-val" id="activeCount">0</div>
             </div>
         </div>
@@ -72,22 +73,22 @@
 
     <div id="serviceModal" class="modal">
         <div class="modal-content">
-            <h3 id="sModalTitle">Service Settings</h3>
+            <h3 id="sModalTitle">Service Configuration</h3>
             <input type="hidden" id="editServiceId">
-            <label>Service Name</label>
-            <input type="text" id="sName">
-            <label>Pricing Model</label>
+            <label>Name</label>
+            <input type="text" id="sName" placeholder="Enter service name...">
+            <label>Pricing Type</label>
             <select id="sPriceType">
-                <option value="Fixed">Fixed Price</option>
-                <option value="Variable">Variable</option>
+                <option value="Fixed">Fixed Rate</option>
+                <option value="Variable">Variable Rate</option>
             </select>
             <label>Base Price ($)</label>
-            <input type="number" id="sPrice">
+            <input type="number" id="sPrice" placeholder="0.00">
             <div style="display: flex; gap: 10px; margin-top: 30px;">
                 <button class="btn" style="flex:1" onclick="saveService()">SAVE SERVICE</button>
                 <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
             </div>
-            <button id="delServiceBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311;" onclick="deleteServiceAction()">DELETE SERVICE</button>
+            <button id="delServiceBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311; display:none;" onclick="deleteServiceAction()">DELETE SERVICE</button>
         </div>
     </div>
 
@@ -97,11 +98,11 @@
             <input type="hidden" id="editClientId">
             <input type="hidden" id="targetService">
             
-            <label>Full Name</label>
+            <label>Client Full Name</label>
             <input type="text" id="cName">
-            <label>Subscription Paid ($)</label>
+            <label>Amount Paid ($)</label>
             <input type="number" id="cPrice">
-            <label>Joined Date</label>
+            <label>Joined Date (First Day)</label>
             <input type="date" id="cJoined">
 
             <div class="row">
@@ -170,6 +171,11 @@
             const dash = document.getElementById('dashboard');
             dash.innerHTML = '';
             
+            if(services.length === 0) {
+                dash.innerHTML = '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services created.</div>';
+                return;
+            }
+
             services.forEach(s => {
                 const sClients = clients.filter(c => c.service_name === s.name);
                 const sEarnings = sClients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
@@ -179,29 +185,46 @@
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <h2 style="margin:0; font-size:1.1rem;">${s.name}</h2>
-                            <span style="font-size:0.7rem; color:var(--gold);">$${sEarnings} Total Rev.</span>
+                            <h2 style="margin:0; font-size:1.2rem;">${s.name}</h2>
+                            <span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} SERVICE REVENUE</span>
                         </div>
-                        <button class="btn btn-outline" style="padding:5px 10px;" onclick='openServiceModal(${JSON.stringify(s)})'>⚙️ MANAGE</button>
+                        <button class="btn btn-outline" onclick='openServiceModal(${JSON.stringify(s)})'>SETTINGS</button>
                     </div>
-                    <table>
-                        <thead>
-                            <tr><th>CLIENT</th><th>JOINED</th><th>PAID</th><th>STATUS</th></tr>
-                        </thead>
-                        <tbody>
-                            ${sClients.map(c => {
-                                const days = Math.ceil((new Date(c.expiry_date) - new Date()) / 86400000);
-                                return `<tr onclick='openEditClientModal(${JSON.stringify(c)})' style="cursor:pointer;">
-                                    <td style="font-weight:600;">${c.name}</td>
-                                    <td>${c.joined_date}</td>
-                                    <td>$${c.price_paid}</td>
-                                    <td style="color:${days <= 3 ? 'var(--danger)' : 'var(--success)'}">${days <= 0 ? 'EXPIRED' : days+'d'}</td>
-                                </tr>`;
-                            }).join('') || '<tr><td colspan="4" style="color:#444; text-align:center;">No Clients</td></tr>'}
-                        </tbody>
-                    </table>
-                    <button class="btn" style="width:100%; margin-top:20px; font-size:0.7rem;" 
-                            onclick="openAddClientModal('${s.name}', '${s.base_price}')">+ ADD CLIENT</button>
+                    <div style="overflow-x:auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Client Name</th>
+                                    <th>Joined</th>
+                                    <th>Subscribed</th>
+                                    <th>Expiry</th>
+                                    <th>Paid</th>
+                                    <th>Remaining</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${sClients.map(c => {
+                                    const diff = new Date(c.expiry_date) - new Date();
+                                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                                    const statusColor = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
+                                    
+                                    return `<tr onclick='openEditClientModal(${JSON.stringify(c)})' style="cursor:pointer;">
+                                        <td style="font-weight:600; color:white;">${c.name}</td>
+                                        <td>${c.joined_date}</td>
+                                        <td>${c.subscribed_date}</td>
+                                        <td>${c.expiry_date}</td>
+                                        <td style="color:var(--gold); font-weight:600;">$${c.price_paid}</td>
+                                        <td>
+                                            <span class="status-pill" style="background: ${statusColor}22; color: ${statusColor};">
+                                                ${days <= 0 ? 'EXPIRED' : days + ' Days'}
+                                            </span>
+                                        </td>
+                                    </tr>`;
+                                }).join('') || '<tr><td colspan="6" style="text-align:center; padding:30px; color:#444;">No clients found.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="btn" style="width:100%; margin-top:20px;" onclick="openAddClientModal('${s.name}', '${s.base_price}')">+ ADD TO ${s.name.toUpperCase()}</button>
                 `;
                 dash.appendChild(card);
             });
@@ -209,13 +232,12 @@
 
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
 
-        // --- SERVICE LOGIC ---
         function openServiceModal(s = null) {
             document.getElementById('sModalTitle').innerText = s ? "Edit Service" : "New Service";
             document.getElementById('editServiceId').value = s ? s.id : '';
             document.getElementById('sName').value = s ? s.name : '';
             document.getElementById('sPriceType').value = s ? s.price_type : 'Fixed';
-            document.getElementById('sPrice').value = s ? s.base_price : 0;
+            document.getElementById('sPrice').value = s ? s.base_price : '';
             document.getElementById('delServiceBtn').style.display = s ? 'block' : 'none';
             toggleModal('serviceModal', true);
         }
@@ -227,28 +249,29 @@
                 price_type: document.getElementById('sPriceType').value, 
                 base_price: document.getElementById('sPrice').value 
             };
+            if(!data.name) return alert("Name is required");
             const query = id ? _supabase.from('services').update(data).eq('id', id) : _supabase.from('services').insert([data]);
             await query; toggleModal('serviceModal', false); loadData();
         }
 
         async function deleteServiceAction() {
             const name = document.getElementById('sName').value;
-            if(confirm(`Wipe ${name}? This will delete all client data for this service!`)) {
+            if(confirm(`Wipe "${name}"? This deletes ALL clients in this service!`)) {
                 await _supabase.from('services').delete().eq('name', name);
                 await _supabase.from('clients').delete().eq('service_name', name);
                 toggleModal('serviceModal', false); loadData();
             }
         }
 
-        // --- CLIENT LOGIC ---
         function openAddClientModal(sName, price) {
-            document.getElementById('clientModalTitle').innerText = "Add Client";
+            document.getElementById('clientModalTitle').innerText = "New Client Entry";
             document.getElementById('editClientId').value = '';
             document.getElementById('targetService').value = sName;
             document.getElementById('cName').value = '';
             document.getElementById('cPrice').value = price;
-            document.getElementById('cJoined').value = new Date().toISOString().split('T')[0];
-            document.getElementById('cSubscribed').value = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('cJoined').value = today;
+            document.getElementById('cSubscribed').value = today;
             document.getElementById('cDuration').value = 30;
             document.getElementById('delClientBtn').style.display = 'none';
             calculateExpiry();
@@ -256,7 +279,7 @@
         }
 
         function openEditClientModal(c) {
-            document.getElementById('clientModalTitle').innerText = "Manage " + c.name;
+            document.getElementById('clientModalTitle').innerText = "Edit " + c.name;
             document.getElementById('editClientId').value = c.id;
             document.getElementById('targetService').value = c.service_name;
             document.getElementById('cName').value = c.name;
