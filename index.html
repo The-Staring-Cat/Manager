@@ -1,1 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rational Edge | Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #0a0a0a; --card: #171717; --silver: #e5e5e5; --border: #262626; --accent: #d4d4d8; --danger: #ef4444; --success: #22c55e; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--silver); margin: 0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1200px; margin: auto; opacity: 0; transition: opacity 0.5s ease; display: none; }
+        .container.visible { opacity: 1; display: block; }
+        
+        #terminalAuth { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
+        .terminal-box { border: 1px solid var(--border); padding: 40px; border-radius: 8px; background: var(--card); }
+        
+        header { border-bottom: 1px solid var(--border); padding: 20px 0; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { font-size: 1.4rem; letter-spacing: 1px; text-transform: uppercase; margin: 0; }
+        
+        .btn { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--silver); border: 1px solid var(--border); }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 20px; }
+        th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 10px 5px; font-weight: 400; }
+        td { padding: 12px 5px; border-bottom: 1px solid #1f1f1f; }
+        
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 50; backdrop-filter: blur(4px); }
+        .modal-content { background: var(--card); margin: 5% auto; padding: 30px; border: 1px solid var(--border); max-width: 450px; border-radius: 12px; }
+        input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; margin: 10px 0; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; }
+    </style>
+</head>
+<body>
 
+    <div id="terminalAuth">
+        <div class="terminal-box">
+            <h2 style="margin-bottom: 20px; color: white;">RATIONAL EDGE <span style="font-weight: 300;">TERMINAL</span></h2>
+            <input type="password" id="pinInput" placeholder="ENTER ACCESS PIN" style="max-width: 220px; text-align: center; letter-spacing: 4px;">
+            <br>
+            <button class="btn" onclick="authenticate()">INITIALIZE SYSTEM</button>
+        </div>
+    </div>
+
+    <div class="container" id="mainApp">
+        <header>
+            <h1>Rational Edge <span style="font-weight: 300; color: #737373;">Services</span></h1>
+            <button class="btn" onclick="toggleModal('serviceModal', true)">+ NEW SERVICE</button>
+        </header>
+        <div id="dashboard" class="grid"></div>
+    </div>
+
+    <div id="serviceModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0">Create Service</h3>
+            <input type="text" id="sName" placeholder="Service Name">
+            <select id="sPriceType" onchange="togglePriceField()">
+                <option value="Fixed">Fixed Price (Service-wide)</option>
+                <option value="Variable">Variable Price (Per Client)</option>
+            </select>
+            <input type="number" id="sPrice" placeholder="Default Monthly Price ($)">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" style="flex:1" onclick="createService()">SAVE SERVICE</button>
+                <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="clientModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0" id="clientModalTitle">Add Client</h3>
+            <input type="hidden" id="targetService">
+            <input type="text" id="cName" placeholder="Client Name">
+            <div id="cPriceWrapper">
+                <input type="number" id="cPrice" placeholder="Subscription Price ($)">
+            </div>
+            <input type="number" id="cDuration" placeholder="Duration (Days)" value="30">
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn" style="flex:1" onclick="addClient()">ADD CLIENT</button>
+                <button class="btn btn-outline" onclick="toggleModal('clientModal', false)">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            SB_URL: 'https://ehbhfdpnwzmpcoptsdpq.supabase.co',
+            SB_KEY: 'sb_publishable_42r3MUVCV27UH9mViL64xA_09w_cfov',
+            MASTER_PIN: '4321',
+            TELEGRAM: {
+                ENABLED: false, // Set to true when we build the bot
+                BOT_TOKEN: '',
+                CHAT_ID: ''
+            }
+        };
+
+        const _supabase = supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
+
+        function authenticate() {
+            if(document.getElementById('pinInput').value === CONFIG.MASTER_PIN) {
+                document.getElementById('terminalAuth').style.display = 'none';
+                document.getElementById('mainApp').classList.add('visible');
+                loadData();
+            } else { alert("ACCESS DENIED"); }
+        }
+
+        async function loadData() {
+            const { data: services } = await _supabase.from('services').select('*').order('name');
+            const { data: clients } = await _supabase.from('clients').select('*');
+            renderDashboard(services || [], clients || []);
+        }
+
+        function renderDashboard(services, clients) {
+            const dash = document.getElementById('dashboard');
+            dash.innerHTML = services.length === 0 ? '<p style="color:#444">No services active.</p>' : '';
+            
+            services.forEach(s => {
+                const sClients = clients.filter(c => c.service_name === s.name);
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <h2 style="margin:0; font-size:1.1rem;">${s.name}</h2>
+                        <button onclick="deleteService('${s.name}')" style="background:none; border:none; color:#444; cursor:pointer;">✕</button>
+                    </div>
+                    <p style="color:#737373; font-size:0.75rem; margin: 5px 0;">${s.price_type} Pricing</p>
+                    <table>
+                        <thead><tr><th>CLIENT</th><th>EXPIRY</th></tr></thead>
+                        <tbody>
+                            ${sClients.map(c => {
+                                const days = Math.ceil((new Date(c.expiry_date) - new Date()) / 86400000);
+                                const color = days <= 3 ? 'var(--danger)' : 'var(--success)';
+                                return `<tr><td>${c.name}</td><td style="color:${color}">${days}d</td></tr>`;
+                            }).join('') || '<tr><td colspan="2" style="color:#444">No Clients</td></tr>'}
+                        </tbody>
+                    </table>
+                    <button class="btn" style="width:100%; margin-top:20px; font-size:0.7rem;" 
+                            onclick="openClientModal('${s.name}', '${s.price_type}', '${s.base_price}')">+ ADD CLIENT</button>
+                `;
+                dash.appendChild(card);
+            });
+        }
+
+        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
+        function togglePriceField() { document.getElementById('sPrice').style.display = document.getElementById('sPriceType').value === 'Fixed' ? 'block' : 'none'; }
+        
+        function openClientModal(sName, type, price) {
+            document.getElementById('targetService').value = sName;
+            document.getElementById('cPriceWrapper').style.display = type === 'Fixed' ? 'none' : 'block';
+            document.getElementById('cPrice').value = price || '';
+            toggleModal('clientModal', true);
+        }
+
+        async function createService() {
+            const name = document.getElementById('sName').value;
+            const type = document.getElementById('sPriceType').value;
+            const price = document.getElementById('sPrice').value || 0;
+            if(!name) return alert("Service name required");
+            
+            await _supabase.from('services').insert([{ name, price_type: type, base_price: price }]);
+            toggleModal('serviceModal', false);
+            loadData();
+        }
+
+        async function addClient() {
+            const name = document.getElementById('cName').value;
+            const sName = document.getElementById('targetService').value;
+            const price = document.getElementById('cPrice').value;
+            const days = parseInt(document.getElementById('cDuration').value);
+            
+            const expiry = new Date();
+            expiry.setDate(expiry.getDate() + days);
+
+            await _supabase.from('clients').insert([{ 
+                name, service_name: sName, price_paid: price, expiry_date: expiry.toISOString().split('T')[0] 
+            }]);
+            
+            if(CONFIG.TELEGRAM.ENABLED) {
+                const msg = `✅ NEW CLIENT: ${name}\nService: ${sName}\nDays: ${days}`;
+                fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM.BOT_TOKEN}/sendMessage?chat_id=${CONFIG.TELEGRAM.CHAT_ID}&text=${encodeURIComponent(msg)}`);
+            }
+
+            toggleModal('clientModal', false);
+            loadData();
+        }
+
+        async function deleteService(name) {
+            if(confirm(`Wipe ${name} and all its clients?`)) {
+                await _supabase.from('services').delete().eq('name', name);
+                await _supabase.from('clients').delete().eq('service_name', name);
+                loadData();
+            }
+        }
+    </script>
+</body>
+</html>
