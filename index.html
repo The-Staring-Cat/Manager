@@ -1,294 +1,214 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rational Edge | Terminal</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        :root { --bg: #0a0a0a; --card: #171717; --silver: #e5e5e5; --border: #262626; --accent: #d4d4d8; --danger: #ef4444; --success: #22c55e; --gold: #f59e0b; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--silver); margin: 0; padding: 20px; line-height: 1.6; }
-        .container { max-width: 1400px; margin: auto; opacity: 0; transition: opacity 0.5s ease; display: none; }
-        .container.visible { opacity: 1; display: block; }
-        
-        #terminalAuth { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        .terminal-box { border: 1px solid var(--border); padding: 40px; border-radius: 8px; background: var(--card); text-align: center; }
-        
-        header { border-bottom: 1px solid var(--border); padding: 20px 0; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 8px; }
-        .stat-val { font-size: 1.5rem; font-weight: 600; color: var(--gold); }
-        
-        .btn { background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
-        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
-        .btn-outline { background: transparent; color: var(--silver); border: 1px solid var(--border); }
-        .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
-        
-        .grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 20px; }
-        th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 12px 8px; font-weight: 600; text-transform: uppercase; }
-        td { padding: 14px 8px; border-bottom: 1px solid #1f1f1f; }
-        
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 50; backdrop-filter: blur(4px); overflow-y: auto; }
-        .modal-content { background: var(--card); margin: 2% auto; padding: 30px; border: 1px solid var(--border); max-width: 500px; border-radius: 12px; }
-        
-        label { display: block; font-size: 0.65rem; color: #737373; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; font-weight: 600; }
-        input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; font-family: inherit; }
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .status-pill { padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; }
-    </style>
-</head>
-<body>
+<script>
+    const CONFIG = {
+        SB_URL: 'https://ehbhfdpnwzmpcoptsdpq.supabase.co',
+        SB_KEY: 'sb_publishable_42r3MUVCV27UH9mViL64xA_09w_cfov',
+        MASTER_PIN: '4321',
+        TG_TOKEN: '8300388935:AAEJyH1Te3FQugTP5M17SKw_8_l6CDO-Wkg', 
+        TG_CHAT_ID: '-1003899947497'
+    };
 
-    <div id="terminalAuth">
-        <div class="terminal-box">
-            <h2 style="margin-bottom: 20px;">RATIONAL EDGE <span style="font-weight: 300;">TERMINAL</span></h2>
-            <input type="password" id="pinInput" placeholder="ENTER ACCESS PIN" style="text-align: center; letter-spacing: 4px;">
-            <br><br>
-            <button class="btn" onclick="authenticate()">INITIALIZE</button>
-        </div>
-    </div>
+    const _supabase = supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
 
-    <div class="container" id="mainApp">
-        <header>
-            <h1>Rational Edge <span style="font-weight: 300; color: #737373;">Vault</span></h1>
-            <button class="btn" onclick="openServiceModal()">+ NEW SERVICE</button>
-        </header>
+    async function authenticate() {
+        if(document.getElementById('pinInput').value === CONFIG.MASTER_PIN) {
+            document.getElementById('terminalAuth').style.display = 'none';
+            document.getElementById('mainApp').classList.add('visible');
+            await loadData();
+            checkExpiringSoon(); // Runs the automated scan after data loads
+        } else { alert("INVALID ACCESS PIN"); }
+    }
 
-        <div class="stats-bar">
-            <div class="stat-card">
-                <label>Total Life-Time Revenue</label>
-                <div class="stat-val" id="totalEarnings">$0.00</div>
-            </div>
-            <div class="stat-card">
-                <label>Total Active Clients</label>
-                <div class="stat-val" id="activeCount">0</div>
-            </div>
-        </div>
+    async function loadData() {
+        const { data: services } = await _supabase.from('services').select('*').order('name');
+        const { data: clients } = await _supabase.from('clients').select('*').order('subscribed_date', { ascending: true });
+        
+        window.currentClients = clients; // Store globally for the scan
+        updateStats(clients || []);
+        renderDashboard(services || [], clients || []);
+    }
 
-        <div id="dashboard" class="grid"></div>
-    </div>
+    // --- TELEGRAM NOTIFICATION LOGIC ---
+    async function sendTelegram(message) {
+        if (!CONFIG.TG_TOKEN || !CONFIG.TG_CHAT_ID) return;
+        const url = `https://api.telegram.org/bot${CONFIG.TG_TOKEN}/sendMessage?chat_id=${CONFIG.TG_CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`;
+        try { await fetch(url); } catch(e) { console.error("Telegram Error", e); }
+    }
 
-    <div id="serviceModal" class="modal">
-        <div class="modal-content">
-            <h3>New Service</h3>
-            <label>Name</label>
-            <input type="text" id="sName" placeholder="Service name...">
-            <label>Pricing Type</label>
-            <select id="sPriceType">
-                <option value="Fixed">Fixed Rate</option>
-                <option value="Variable">Variable Rate</option>
-            </select>
-            <label>Base Price ($)</label>
-            <input type="number" id="sPrice" placeholder="0.00">
-            <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="saveService()">CREATE SERVICE</button>
-                <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="clientModal" class="modal">
-        <div class="modal-content">
-            <h3 id="clientModalTitle">Manage Client</h3>
-            <input type="hidden" id="editClientId">
-            <input type="hidden" id="targetService">
+    function checkExpiringSoon() {
+        const clients = window.currentClients || [];
+        const today = new Date().toISOString().split('T')[0];
+        
+        clients.forEach(c => {
+            const diff = new Date(c.expiry_date) - new Date();
+            const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
             
-            <label>Client Full Name</label>
-            <input type="text" id="cName">
-            <label>Amount Paid ($)</label>
-            <input type="number" id="cPrice">
-            <label>Joined Date</label>
-            <input type="date" id="cJoined">
+            // Generate a unique key for this client + day to avoid spamming
+            const storageKey = `notified_${c.id}_${today}`;
+            if (localStorage.getItem(storageKey)) return; // Already notified today
 
-            <div class="row">
-                <div>
-                    <label>Subscribed Date</label>
-                    <input type="date" id="cSubscribed" onchange="calculateExpiry()">
+            let alertMsg = "";
+            if (daysLeft === 2) {
+                alertMsg = `⚠️ <b>2 DAYS REMAINING</b>\nClient: ${c.name}\nService: ${c.service_name}\nExpiry: ${c.expiry_date}`;
+            } else if (daysLeft === 1) {
+                alertMsg = `🚨 <b>URGENT: 1 DAY LEFT</b>\nClient: ${c.name}\nService: ${c.service_name}\nExpiry: ${c.expiry_date}`;
+            } else if (daysLeft <= 0) {
+                alertMsg = `❌ <b>SUBSCRIPTION EXPIRED</b>\nClient: ${c.name}\nService: ${c.service_name}\nAction: Follow up for renewal.`;
+            }
+
+            if (alertMsg) {
+                sendTelegram(alertMsg);
+                localStorage.setItem(storageKey, "true"); // Mark as notified for today
+            }
+        });
+    }
+
+    // --- EXISTING DASHBOARD LOGIC ---
+    function updateStats(clients) {
+        const total = clients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
+        document.getElementById('totalEarnings').innerText = `$${total.toLocaleString()}`;
+        document.getElementById('activeCount').innerText = clients.length;
+    }
+
+    function calculateExpiry() {
+        const start = document.getElementById('cSubscribed').value;
+        const days = parseInt(document.getElementById('cDuration').value);
+        if(start && days) {
+            const d = new Date(start);
+            d.setDate(d.getDate() + days);
+            document.getElementById('cExpiry').value = d.toISOString().split('T')[0];
+        }
+    }
+
+    function renderDashboard(services, clients) {
+        const dash = document.getElementById('dashboard');
+        dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services created.</div>' : '';
+
+        services.forEach(s => {
+            const sClients = clients.filter(c => c.service_name === s.name);
+            const sEarnings = sClients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2>
+                        <span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} REVENUE</span>
+                    </div>
                 </div>
-                <div>
-                    <label>Duration (Days)</label>
-                    <input type="number" id="cDuration" oninput="calculateExpiry()">
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Client Name</th>
+                                <th>Joined</th>
+                                <th>Subscribed</th>
+                                <th>Expiry</th>
+                                <th>Paid</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sClients.map(c => {
+                                const days = Math.ceil((new Date(c.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+                                const color = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
+                                return `<tr>
+                                    <td style="font-weight:600; color:white;">${c.name}</td>
+                                    <td>${c.joined_date}</td>
+                                    <td>${c.subscribed_date}</td>
+                                    <td>${c.expiry_date}</td>
+                                    <td style="color:var(--gold); font-weight:600;">$${c.price_paid}</td>
+                                    <td><span class="status-pill" style="background:${color}22; color:${color};">${days <= 0 ? 'EXPIRED' : days + 'd left'}</span></td>
+                                    <td><button class="btn btn-outline btn-sm" onclick='openEditClientModal(${JSON.stringify(c)})'>MANAGE</button></td>
+                                </tr>`;
+                            }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients registered.</td></tr>'}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+                <button class="btn" style="width:100%; margin-top:20px;" onclick="openAddClientModal('${s.name}', '${s.base_price}')">+ ADD TO ${s.name.toUpperCase()}</button>
+            `;
+            dash.appendChild(card);
+        });
+    }
 
-            <label>Expiry Date</label>
-            <input type="date" id="cExpiry" readonly style="background:#111; color:#737373;">
+    function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
 
-            <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="confirmAndSaveClient()">UPDATE DATA</button>
-                <button class="btn btn-outline" style="flex:1" onclick="toggleModal('clientModal', false)">CANCEL</button>
-            </div>
-            <button id="delClientBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311;" onclick="deleteClient()">REMOVE CLIENT</button>
-        </div>
-    </div>
-
-    <script>
-        const CONFIG = {
-            SB_URL: 'https://ehbhfdpnwzmpcoptsdpq.supabase.co',
-            SB_KEY: 'sb_publishable_42r3MUVCV27UH9mViL64xA_09w_cfov',
-            MASTER_PIN: '4321'
+    async function saveService() {
+        const data = { 
+            name: document.getElementById('sName').value, 
+            price_type: document.getElementById('sPriceType').value, 
+            base_price: document.getElementById('sPrice').value 
         };
+        if(!data.name) return;
+        await _supabase.from('services').insert([data]);
+        toggleModal('serviceModal', false); loadData();
+    }
 
-        const _supabase = supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
+    function openAddClientModal(sName, price) {
+        document.getElementById('clientModalTitle').innerText = "Register New Client";
+        document.getElementById('editClientId').value = '';
+        document.getElementById('targetService').value = sName;
+        document.getElementById('cName').value = '';
+        document.getElementById('cPrice').value = price;
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('cJoined').value = today;
+        document.getElementById('cSubscribed').value = today;
+        document.getElementById('cDuration').value = 30;
+        document.getElementById('delClientBtn').style.display = 'none';
+        calculateExpiry();
+        toggleModal('clientModal', true);
+    }
 
-        function authenticate() {
-            if(document.getElementById('pinInput').value === CONFIG.MASTER_PIN) {
-                document.getElementById('terminalAuth').style.display = 'none';
-                document.getElementById('mainApp').classList.add('visible');
-                loadData();
-            } else { alert("INVALID ACCESS PIN"); }
-        }
+    function openEditClientModal(c) {
+        document.getElementById('clientModalTitle').innerText = "Update: " + c.name;
+        document.getElementById('editClientId').value = c.id;
+        document.getElementById('targetService').value = c.service_name;
+        document.getElementById('cName').value = c.name;
+        document.getElementById('cPrice').value = c.price_paid;
+        document.getElementById('cJoined').value = c.joined_date;
+        document.getElementById('cSubscribed').value = c.subscribed_date;
+        document.getElementById('cDuration').value = c.duration;
+        document.getElementById('delClientBtn').style.display = 'block';
+        calculateExpiry();
+        toggleModal('clientModal', true);
+    }
 
-        async function loadData() {
-            const { data: services } = await _supabase.from('services').select('*').order('name');
-            const { data: clients } = await _supabase.from('clients').select('*');
-            updateStats(clients || []);
-            renderDashboard(services || [], clients || []);
-        }
-
-        function updateStats(clients) {
-            const total = clients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
-            document.getElementById('totalEarnings').innerText = `$${total.toLocaleString()}`;
-            document.getElementById('activeCount').innerText = clients.length;
-        }
-
-        function calculateExpiry() {
-            const start = document.getElementById('cSubscribed').value;
-            const days = parseInt(document.getElementById('cDuration').value);
-            if(start && days) {
-                const d = new Date(start);
-                d.setDate(d.getDate() + days);
-                document.getElementById('cExpiry').value = d.toISOString().split('T')[0];
-            }
-        }
-
-        function renderDashboard(services, clients) {
-            const dash = document.getElementById('dashboard');
-            dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services created.</div>' : '';
-
-            services.forEach(s => {
-                const sClients = clients.filter(c => c.service_name === s.name);
-                const sEarnings = sClients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2>
-                            <span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} REVENUE</span>
-                        </div>
-                    </div>
-                    <div style="overflow-x:auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Client Name</th>
-                                    <th>Joined</th>
-                                    <th>Subscribed</th>
-                                    <th>Expiry</th>
-                                    <th>Paid</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${sClients.map(c => {
-                                    const days = Math.ceil((new Date(c.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
-                                    const color = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
-                                    return `<tr>
-                                        <td style="font-weight:600; color:white;">${c.name}</td>
-                                        <td>${c.joined_date}</td>
-                                        <td>${c.subscribed_date}</td>
-                                        <td>${c.expiry_date}</td>
-                                        <td style="color:var(--gold); font-weight:600;">$${c.price_paid}</td>
-                                        <td><span class="status-pill" style="background:${color}22; color:${color};">${days <= 0 ? 'EXPIRED' : days + 'd left'}</span></td>
-                                        <td><button class="btn btn-outline btn-sm" onclick='openEditClientModal(${JSON.stringify(c)})'>MANAGE</button></td>
-                                    </tr>`;
-                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients registered.</td></tr>'}
-                            </tbody>
-                        </table>
-                    </div>
-                    <button class="btn" style="width:100%; margin-top:20px;" onclick="openAddClientModal('${s.name}', '${s.base_price}')">+ ADD TO ${s.name.toUpperCase()}</button>
-                `;
-                dash.appendChild(card);
-            });
-        }
-
-        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
-
-        async function saveService() {
-            const data = { 
-                name: document.getElementById('sName').value, 
-                price_type: document.getElementById('sPriceType').value, 
-                base_price: document.getElementById('sPrice').value 
+    async function confirmAndSaveClient() {
+        const id = document.getElementById('editClientId').value;
+        const isUpdate = id !== '';
+        
+        if(confirm(isUpdate ? "Confirm update?" : "Register new client?")) {
+            const data = {
+                name: document.getElementById('cName').value,
+                service_name: document.getElementById('targetService').value,
+                price_paid: document.getElementById('cPrice').value,
+                joined_date: document.getElementById('cJoined').value,
+                subscribed_date: document.getElementById('cSubscribed').value,
+                duration: document.getElementById('cDuration').value,
+                expiry_date: document.getElementById('cExpiry').value
             };
-            if(!data.name) return;
-            await _supabase.from('services').insert([data]);
-            toggleModal('serviceModal', false); loadData();
-        }
-
-        function openAddClientModal(sName, price) {
-            document.getElementById('clientModalTitle').innerText = "Register New Client";
-            document.getElementById('editClientId').value = '';
-            document.getElementById('targetService').value = sName;
-            document.getElementById('cName').value = '';
-            document.getElementById('cPrice').value = price;
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('cJoined').value = today;
-            document.getElementById('cSubscribed').value = today;
-            document.getElementById('cDuration').value = 30;
-            document.getElementById('delClientBtn').style.display = 'none';
-            calculateExpiry();
-            toggleModal('clientModal', true);
-        }
-
-        function openEditClientModal(c) {
-            document.getElementById('clientModalTitle').innerText = "Update: " + c.name;
-            document.getElementById('editClientId').value = c.id;
-            document.getElementById('targetService').value = c.service_name;
-            document.getElementById('cName').value = c.name;
-            document.getElementById('cPrice').value = c.price_paid;
-            document.getElementById('cJoined').value = c.joined_date;
-            document.getElementById('cSubscribed').value = c.subscribed_date;
-            document.getElementById('cDuration').value = c.duration;
-            document.getElementById('delClientBtn').style.display = 'block';
-            calculateExpiry();
-            toggleModal('clientModal', true);
-        }
-
-        async function confirmAndSaveClient() {
-            const isUpdate = document.getElementById('editClientId').value !== '';
-            const msg = isUpdate ? "Confirm update to this client's profile?" : "Register this new client?";
+            const query = id ? _supabase.from('clients').update(data).eq('id', id) : _supabase.from('clients').insert([data]);
+            const { error } = await query;
             
-            if(confirm(msg)) {
-                const id = document.getElementById('editClientId').value;
-                const data = {
-                    name: document.getElementById('cName').value,
-                    service_name: document.getElementById('targetService').value,
-                    price_paid: document.getElementById('cPrice').value,
-                    joined_date: document.getElementById('cJoined').value,
-                    subscribed_date: document.getElementById('cSubscribed').value,
-                    duration: document.getElementById('cDuration').value,
-                    expiry_date: document.getElementById('cExpiry').value
-                };
-                const query = id ? _supabase.from('clients').update(data).eq('id', id) : _supabase.from('clients').insert([data]);
-                const { error } = await query;
-                if(error) alert(error.message); else { toggleModal('clientModal', false); loadData(); }
+            if(error) {
+                alert(error.message);
+            } else {
+                const tgMsg = isUpdate ? `🔄 <b>Updated</b>: ${data.name}` : `✅ <b>New</b>: ${data.name} ($${data.price_paid})`;
+                sendTelegram(tgMsg);
+                toggleModal('clientModal', false); 
+                loadData(); 
             }
         }
+    }
 
-        async function deleteClient() {
-            const id = document.getElementById('editClientId').value;
-            if(confirm("PERMANENTLY REMOVE CLIENT? This cannot be undone.")) {
-                await _supabase.from('clients').delete().eq('id', id);
-                toggleModal('clientModal', false); loadData();
-            }
+    async function deleteClient() {
+        const id = document.getElementById('editClientId').value;
+        const name = document.getElementById('cName').value;
+        if(confirm("PERMANENTLY REMOVE CLIENT?")) {
+            await _supabase.from('clients').delete().eq('id', id);
+            sendTelegram(`🗑️ <b>Removed</b>: ${name}`);
+            toggleModal('clientModal', false); loadData();
         }
-    </script>
-</body>
-</html>
+    }
+</script>
