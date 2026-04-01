@@ -1,1 +1,1 @@
-# rational-edge-manager
+manager
