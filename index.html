@@ -165,19 +165,20 @@
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead><tr><th>Name</th><th>Joined</th><th>Subscribed</th><th>Expiry</th><th>Paid</th><th>Status</th><th>Action</th></tr></thead>
+                            <thead><tr><th>Ref #</th><th>Name</th><th>Joined</th><th>Subscribed</th><th>Expiry</th><th>Paid</th><th>Status</th><th>Action</th></tr></thead>
                             <tbody>
                                 ${sClients.map(c => {
                                     const days = Math.ceil((new Date(c.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
                                     const col = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
                                     return `<tr>
+                                        <td style="color:#737373; font-weight:600;">#${c.id}</td>
                                         <td style="font-weight:600; color:white;">${c.name}</td>
                                         <td>${c.joined_date}</td><td>${c.subscribed_date}</td><td>${c.expiry_date}</td>
                                         <td style="color:var(--gold); font-weight:600;">$${c.price_paid}</td>
                                         <td><span class="status-pill" style="background:${col}22; color:${col};">${days <= 0 ? 'EXPIRED' : days + 'd left'}</span></td>
                                         <td><button class="btn btn-outline btn-sm" onclick='openEditClientModal(${JSON.stringify(c)})'>MANAGE</button></td>
                                     </tr>`;
-                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients.</td></tr>'}
+                                }).join('') || '<tr><td colspan="8" style="text-align:center; color:#444; padding:20px;">No clients.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
