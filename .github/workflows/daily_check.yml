@@ -1,0 +1,28 @@
+name: Daily Expiry Check
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Runs every day at 3:00 AM UTC (8:30 AM Sri Lanka time)
+  workflow_dispatch:      # Allows you to run it manually to test
+
+jobs:
+  check-expiry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Script
+        env:
+          SB_URL: ${{ secrets.SB_URL }}
+          SB_KEY: ${{ secrets.SB_KEY }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python check_expiry.py
