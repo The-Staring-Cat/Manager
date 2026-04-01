@@ -91,9 +91,9 @@
             SB_KEY: 'sb_publishable_42r3MUVCV27UH9mViL64xA_09w_cfov',
             MASTER_PIN: '4321',
             TELEGRAM: {
-                ENABLED: false, // Set to true when we build the bot
-                BOT_TOKEN: '',
-                CHAT_ID: ''
+                // If you want notifications, fill these two fields. If empty, the site works perfectly without them.
+                BOT_TOKEN: '', 
+                CHAT_ID: ''   
             }
         };
 
@@ -108,9 +108,16 @@
         }
 
         async function loadData() {
-            const { data: services } = await _supabase.from('services').select('*').order('name');
-            const { data: clients } = await _supabase.from('clients').select('*');
-            renderDashboard(services || [], clients || []);
+            try {
+                const { data: services, error: sErr } = await _supabase.from('services').select('*').order('name');
+                const { data: clients, error: cErr } = await _supabase.from('clients').select('*');
+                
+                if (sErr || cErr) throw (sErr || cErr);
+                renderDashboard(services || [], clients || []);
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                alert("Database connection failed. Ensure RLS is disabled in Supabase.");
+            }
         }
 
         function renderDashboard(services, clients) {
@@ -160,7 +167,9 @@
             const price = document.getElementById('sPrice').value || 0;
             if(!name) return alert("Service name required");
             
-            await _supabase.from('services').insert([{ name, price_type: type, base_price: price }]);
+            const { error } = await _supabase.from('services').insert([{ name, price_type: type, base_price: price }]);
+            if(error) alert("Error creating service: " + error.message);
+            
             toggleModal('serviceModal', false);
             loadData();
         }
@@ -174,11 +183,14 @@
             const expiry = new Date();
             expiry.setDate(expiry.getDate() + days);
 
-            await _supabase.from('clients').insert([{ 
+            const { error } = await _supabase.from('clients').insert([{ 
                 name, service_name: sName, price_paid: price, expiry_date: expiry.toISOString().split('T')[0] 
             }]);
+
+            if(error) return alert("Error: " + error.message);
             
-            if(CONFIG.TELEGRAM.ENABLED) {
+            // Telegram Logic
+            if(CONFIG.TELEGRAM.BOT_TOKEN && CONFIG.TELEGRAM.CHAT_ID) {
                 const msg = `✅ NEW CLIENT: ${name}\nService: ${sName}\nDays: ${days}`;
                 fetch(`https://api.telegram.org/bot${CONFIG.TELEGRAM.BOT_TOKEN}/sendMessage?chat_id=${CONFIG.TELEGRAM.CHAT_ID}&text=${encodeURIComponent(msg)}`);
             }
