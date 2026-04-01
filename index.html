@@ -59,13 +59,13 @@
 
     <div id="serviceModal" class="modal">
         <div class="modal-content">
-            <h3>New Service</h3>
-            <label>Name</label><input type="text" id="sName">
+            <h3>New Service Configuration</h3>
+            <label>Service Name</label><input type="text" id="sName" placeholder="e.g. Premium Signals">
             <label>Pricing Type</label>
-            <select id="sPriceType"><option value="Fixed">Fixed</option><option value="Variable">Variable</option></select>
-            <label>Base Price ($)</label><input type="number" id="sPrice">
+            <select id="sPriceType"><option value="Fixed">Fixed Rate</option><option value="Variable">Variable Rate</option></select>
+            <label>Default Price ($)</label><input type="number" id="sPrice" placeholder="0.00">
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="saveService()">CREATE</button>
+                <button class="btn" style="flex:1" onclick="saveService()">CREATE SERVICE</button>
                 <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
             </div>
         </div>
@@ -142,7 +142,7 @@
 
         function renderDashboard(services, clients) {
             const dash = document.getElementById('dashboard');
-            dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services.</div>' : '';
+            dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services defined.</div>' : '';
 
             services.forEach(s => {
                 const sClients = clients.filter(c => c.service_name === s.name);
@@ -151,7 +151,7 @@
                 card.className = 'card';
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div><h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2><span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} REVENUE</span></div>
+                        <div><h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2><span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} SERVICE REVENUE</span></div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
@@ -168,7 +168,7 @@
                                         <td><span class="status-pill" style="background:${col}22; color:${col};">${days <= 0 ? 'EXPIRED' : days + 'd left'}</span></td>
                                         <td><button class="btn btn-outline btn-sm" onclick='openEditClientModal(${JSON.stringify(c)})'>MANAGE</button></td>
                                     </tr>`;
-                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients.</td></tr>'}
+                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients in this service.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -180,11 +180,23 @@
 
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
 
+        function openServiceModal() {
+            document.getElementById('sName').value = '';
+            document.getElementById('sPrice').value = '';
+            toggleModal('serviceModal', true);
+        }
+
         async function saveService() {
-            const data = { name: document.getElementById('sName').value, price_type: document.getElementById('sPriceType').value, base_price: document.getElementById('sPrice').value };
-            if(!data.name) return;
-            await _supabase.from('services').insert([data]);
-            toggleModal('serviceModal', false); loadData();
+            const data = { 
+                name: document.getElementById('sName').value, 
+                price_type: document.getElementById('sPriceType').value, 
+                base_price: document.getElementById('sPrice').value 
+            };
+            if(!data.name) { alert("Enter a service name"); return; }
+            const { error } = await _supabase.from('services').insert([data]);
+            if(error) alert(error.message);
+            toggleModal('serviceModal', false); 
+            loadData();
         }
 
         function openAddClientModal(sName, price) {
@@ -218,7 +230,7 @@
 
         async function confirmAndSaveClient() {
             const id = document.getElementById('editClientId').value;
-            if(confirm(id ? "Confirm update?" : "Register new client?")) {
+            if(confirm(id ? "Confirm update to client data?" : "Register new client?")) {
                 const data = {
                     name: document.getElementById('cName').value,
                     service_name: document.getElementById('targetService').value,
@@ -238,7 +250,7 @@
         async function deleteClient() {
             const id = document.getElementById('editClientId').value;
             const name = document.getElementById('cName').value;
-            if(confirm("DELETE CLIENT?")) {
+            if(confirm("PERMANENTLY DELETE CLIENT?")) {
                 await _supabase.from('clients').delete().eq('id', id);
                 sendTelegram(`🗑️ <b>Removed</b>: ${name}`);
                 toggleModal('clientModal', false); loadData();
