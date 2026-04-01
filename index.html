@@ -7,34 +7,35 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0a0a0a; --card: #171717; --silver: #e5e5e5; --border: #262626; --accent: #d4d4d8; --danger: #ef4444; --success: #22c55e; }
+        :root { --bg: #0a0a0a; --card: #171717; --silver: #e5e5e5; --border: #262626; --accent: #d4d4d8; --danger: #ef4444; --success: #22c55e; --gold: #f59e0b; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--silver); margin: 0; padding: 20px; line-height: 1.6; }
-        .container { max-width: 1200px; margin: auto; opacity: 0; transition: opacity 0.5s ease; display: none; }
+        .container { max-width: 1300px; margin: auto; opacity: 0; transition: opacity 0.5s ease; display: none; }
         .container.visible { opacity: 1; display: block; }
         
-        #terminalAuth { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }
-        .terminal-box { border: 1px solid var(--border); padding: 40px; border-radius: 8px; background: var(--card); }
+        #terminalAuth { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+        .terminal-box { border: 1px solid var(--border); padding: 40px; border-radius: 8px; background: var(--card); text-align: center; }
         
         header { border-bottom: 1px solid var(--border); padding: 20px 0; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-size: 1.4rem; letter-spacing: 1px; text-transform: uppercase; margin: 0; }
+        .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 8px; }
+        .stat-val { font-size: 1.5rem; font-weight: 600; color: var(--gold); }
         
         .btn { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
         .btn:hover { opacity: 0.8; transform: translateY(-1px); }
         .btn-outline { background: transparent; color: var(--silver); border: 1px solid var(--border); }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 25px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
         
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 20px; }
         th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 10px 5px; font-weight: 400; }
         td { padding: 12px 5px; border-bottom: 1px solid #1f1f1f; }
         
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 50; backdrop-filter: blur(4px); overflow-y: auto; }
         .modal-content { background: var(--card); margin: 2% auto; padding: 30px; border: 1px solid var(--border); max-width: 480px; border-radius: 12px; }
         
-        label { display: block; font-size: 0.7rem; color: #737373; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; }
-        input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; font-family: inherit; }
-        input:focus { border-color: var(--accent); }
+        label { display: block; font-size: 0.65rem; color: #737373; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; }
+        input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     </style>
 </head>
@@ -42,39 +43,51 @@
 
     <div id="terminalAuth">
         <div class="terminal-box">
-            <h2 style="margin-bottom: 20px; color: white;">RATIONAL EDGE <span style="font-weight: 300;">TERMINAL</span></h2>
-            <input type="password" id="pinInput" placeholder="ENTER ACCESS PIN" style="max-width: 220px; text-align: center; letter-spacing: 4px;">
+            <h2 style="margin-bottom: 20px;">RATIONAL EDGE <span style="font-weight: 300;">TERMINAL</span></h2>
+            <input type="password" id="pinInput" placeholder="ACCESS PIN" style="text-align: center; letter-spacing: 4px;">
             <br><br>
-            <button class="btn" onclick="authenticate()">INITIALIZE SYSTEM</button>
+            <button class="btn" onclick="authenticate()">INITIALIZE</button>
         </div>
     </div>
 
     <div class="container" id="mainApp">
         <header>
-            <h1>Rational Edge <span style="font-weight: 300; color: #737373;">Manager</span></h1>
-            <button class="btn" onclick="toggleModal('serviceModal', true)">+ NEW SERVICE</button>
+            <h1>Rational Edge <span style="font-weight: 300; color: #737373;">Vault</span></h1>
+            <button class="btn" onclick="openServiceModal()">+ NEW SERVICE</button>
         </header>
+
+        <div class="stats-bar">
+            <div class="stat-card">
+                <label>Total Life-Time Earnings</label>
+                <div class="stat-val" id="totalEarnings">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <label>Active Subscriptions</label>
+                <div class="stat-val" id="activeCount">0</div>
+            </div>
+        </div>
+
         <div id="dashboard" class="grid"></div>
     </div>
 
     <div id="serviceModal" class="modal">
         <div class="modal-content">
-            <h3>Configure Service</h3>
+            <h3 id="sModalTitle">Service Settings</h3>
+            <input type="hidden" id="editServiceId">
             <label>Service Name</label>
-            <input type="text" id="sName" placeholder="e.g. Crypto Signals">
+            <input type="text" id="sName">
             <label>Pricing Model</label>
-            <select id="sPriceType" onchange="document.getElementById('sPriceContainer').style.display = this.value === 'Fixed' ? 'block' : 'none'">
+            <select id="sPriceType">
                 <option value="Fixed">Fixed Price</option>
-                <option value="Variable">Variable (Per Client)</option>
+                <option value="Variable">Variable</option>
             </select>
-            <div id="sPriceContainer">
-                <label>Base Monthly Price ($)</label>
-                <input type="number" id="sPrice" value="0">
-            </div>
+            <label>Base Price ($)</label>
+            <input type="number" id="sPrice">
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="createService()">SAVE SERVICE</button>
+                <button class="btn" style="flex:1" onclick="saveService()">SAVE SERVICE</button>
                 <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
             </div>
+            <button id="delServiceBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311;" onclick="deleteServiceAction()">DELETE SERVICE</button>
         </div>
     </div>
 
@@ -86,13 +99,9 @@
             
             <label>Full Name</label>
             <input type="text" id="cName">
-
-            <div id="cPriceWrapper">
-                <label>Subscription Price ($)</label>
-                <input type="number" id="cPrice">
-            </div>
-
-            <label>Joined Date (First Time)</label>
+            <label>Subscription Paid ($)</label>
+            <input type="number" id="cPrice">
+            <label>Joined Date</label>
             <input type="date" id="cJoined">
 
             <div class="row">
@@ -106,14 +115,14 @@
                 </div>
             </div>
 
-            <label>Expiry Date (Auto-Calculated)</label>
-            <input type="date" id="cExpiry" readonly style="background:#111; color:#737373; cursor:not-allowed; border-style: dashed;">
+            <label>Expiry Date</label>
+            <input type="date" id="cExpiry" readonly style="background:#111; color:#737373;">
 
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="saveClient()">SAVE CLIENT DATA</button>
+                <button class="btn" style="flex:1" onclick="saveClient()">SAVE DATA</button>
                 <button class="btn btn-outline" style="flex:1" onclick="toggleModal('clientModal', false)">CANCEL</button>
             </div>
-            <button id="deleteClientBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #331111; display:none;" onclick="deleteClient()">DELETE CLIENT</button>
+            <button id="delClientBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311;" onclick="deleteClient()">REMOVE CLIENT</button>
         </div>
     </div>
 
@@ -121,8 +130,7 @@
         const CONFIG = {
             SB_URL: 'https://ehbhfdpnwzmpcoptsdpq.supabase.co',
             SB_KEY: 'sb_publishable_42r3MUVCV27UH9mViL64xA_09w_cfov',
-            MASTER_PIN: '4321',
-            TELEGRAM: { ENABLED: false, TOKEN: '', CHAT: '' }
+            MASTER_PIN: '4321'
         };
 
         const _supabase = supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
@@ -132,13 +140,20 @@
                 document.getElementById('terminalAuth').style.display = 'none';
                 document.getElementById('mainApp').classList.add('visible');
                 loadData();
-            } else { alert("INVALID PIN"); }
+            } else { alert("ACCESS DENIED"); }
         }
 
         async function loadData() {
             const { data: services } = await _supabase.from('services').select('*').order('name');
             const { data: clients } = await _supabase.from('clients').select('*');
+            updateStats(clients || []);
             renderDashboard(services || [], clients || []);
+        }
+
+        function updateStats(clients) {
+            const total = clients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
+            document.getElementById('totalEarnings').innerText = `$${total.toLocaleString()}`;
+            document.getElementById('activeCount').innerText = clients.length;
         }
 
         function calculateExpiry() {
@@ -153,32 +168,40 @@
 
         function renderDashboard(services, clients) {
             const dash = document.getElementById('dashboard');
-            dash.innerHTML = services.length === 0 ? '<p style="color:#444">No services active.</p>' : '';
+            dash.innerHTML = '';
             
             services.forEach(s => {
                 const sClients = clients.filter(c => c.service_name === s.name);
+                const sEarnings = sClients.reduce((sum, c) => sum + (parseFloat(c.price_paid) || 0), 0);
+                
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h2 style="margin:0; font-size:1.1rem;">${s.name}</h2>
-                        <button onclick="deleteService('${s.name}')" style="background:none; border:none; color:#444; cursor:pointer;">✕</button>
+                        <div>
+                            <h2 style="margin:0; font-size:1.1rem;">${s.name}</h2>
+                            <span style="font-size:0.7rem; color:var(--gold);">$${sEarnings} Total Rev.</span>
+                        </div>
+                        <button class="btn btn-outline" style="padding:5px 10px;" onclick='openServiceModal(${JSON.stringify(s)})'>⚙️ MANAGE</button>
                     </div>
                     <table>
-                        <thead><tr><th>CLIENT</th><th>EXPIRY</th></tr></thead>
+                        <thead>
+                            <tr><th>CLIENT</th><th>JOINED</th><th>PAID</th><th>STATUS</th></tr>
+                        </thead>
                         <tbody>
                             ${sClients.map(c => {
                                 const days = Math.ceil((new Date(c.expiry_date) - new Date()) / 86400000);
-                                const color = days <= 3 ? 'var(--danger)' : 'var(--success)';
-                                return `<tr>
-                                    <td onclick='openEditModal(${JSON.stringify(c)})' style="cursor:pointer; font-weight:600;">${c.name}</td>
-                                    <td style="color:${color}">${days <= 0 ? 'EXPIRED' : days + 'd'}</td>
+                                return `<tr onclick='openEditClientModal(${JSON.stringify(c)})' style="cursor:pointer;">
+                                    <td style="font-weight:600;">${c.name}</td>
+                                    <td>${c.joined_date}</td>
+                                    <td>$${c.price_paid}</td>
+                                    <td style="color:${days <= 3 ? 'var(--danger)' : 'var(--success)'}">${days <= 0 ? 'EXPIRED' : days+'d'}</td>
                                 </tr>`;
-                            }).join('') || '<tr><td colspan="2" style="color:#444">No Clients</td></tr>'}
+                            }).join('') || '<tr><td colspan="4" style="color:#444; text-align:center;">No Clients</td></tr>'}
                         </tbody>
                     </table>
                     <button class="btn" style="width:100%; margin-top:20px; font-size:0.7rem;" 
-                            onclick="openAddModal('${s.name}', '${s.price_type}', '${s.base_price}')">+ ADD CLIENT</button>
+                            onclick="openAddClientModal('${s.name}', '${s.base_price}')">+ ADD CLIENT</button>
                 `;
                 dash.appendChild(card);
             });
@@ -186,8 +209,40 @@
 
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
 
-        function openAddModal(sName, type, price) {
-            document.getElementById('clientModalTitle').innerText = "Add Client to " + sName;
+        // --- SERVICE LOGIC ---
+        function openServiceModal(s = null) {
+            document.getElementById('sModalTitle').innerText = s ? "Edit Service" : "New Service";
+            document.getElementById('editServiceId').value = s ? s.id : '';
+            document.getElementById('sName').value = s ? s.name : '';
+            document.getElementById('sPriceType').value = s ? s.price_type : 'Fixed';
+            document.getElementById('sPrice').value = s ? s.base_price : 0;
+            document.getElementById('delServiceBtn').style.display = s ? 'block' : 'none';
+            toggleModal('serviceModal', true);
+        }
+
+        async function saveService() {
+            const id = document.getElementById('editServiceId').value;
+            const data = { 
+                name: document.getElementById('sName').value, 
+                price_type: document.getElementById('sPriceType').value, 
+                base_price: document.getElementById('sPrice').value 
+            };
+            const query = id ? _supabase.from('services').update(data).eq('id', id) : _supabase.from('services').insert([data]);
+            await query; toggleModal('serviceModal', false); loadData();
+        }
+
+        async function deleteServiceAction() {
+            const name = document.getElementById('sName').value;
+            if(confirm(`Wipe ${name}? This will delete all client data for this service!`)) {
+                await _supabase.from('services').delete().eq('name', name);
+                await _supabase.from('clients').delete().eq('service_name', name);
+                toggleModal('serviceModal', false); loadData();
+            }
+        }
+
+        // --- CLIENT LOGIC ---
+        function openAddClientModal(sName, price) {
+            document.getElementById('clientModalTitle').innerText = "Add Client";
             document.getElementById('editClientId').value = '';
             document.getElementById('targetService').value = sName;
             document.getElementById('cName').value = '';
@@ -195,21 +250,21 @@
             document.getElementById('cJoined').value = new Date().toISOString().split('T')[0];
             document.getElementById('cSubscribed').value = new Date().toISOString().split('T')[0];
             document.getElementById('cDuration').value = 30;
-            document.getElementById('deleteClientBtn').style.display = 'none';
+            document.getElementById('delClientBtn').style.display = 'none';
             calculateExpiry();
             toggleModal('clientModal', true);
         }
 
-        function openEditModal(c) {
-            document.getElementById('clientModalTitle').innerText = "Update " + c.name;
+        function openEditClientModal(c) {
+            document.getElementById('clientModalTitle').innerText = "Manage " + c.name;
             document.getElementById('editClientId').value = c.id;
             document.getElementById('targetService').value = c.service_name;
             document.getElementById('cName').value = c.name;
             document.getElementById('cPrice').value = c.price_paid;
             document.getElementById('cJoined').value = c.joined_date;
-            document.getElementById('cSubscribed').value = c.subscribed_date || c.joined_date;
-            document.getElementById('cDuration').value = c.duration || 30;
-            document.getElementById('deleteClientBtn').style.display = 'block';
+            document.getElementById('cSubscribed').value = c.subscribed_date;
+            document.getElementById('cDuration').value = c.duration;
+            document.getElementById('delClientBtn').style.display = 'block';
             calculateExpiry();
             toggleModal('clientModal', true);
         }
@@ -225,33 +280,15 @@
                 duration: document.getElementById('cDuration').value,
                 expiry_date: document.getElementById('cExpiry').value
             };
-
             const query = id ? _supabase.from('clients').update(data).eq('id', id) : _supabase.from('clients').insert([data]);
-            const { error } = await query;
-            if(error) alert(error.message); else { toggleModal('clientModal', false); loadData(); }
-        }
-
-        async function createService() {
-            const name = document.getElementById('sName').value;
-            const type = document.getElementById('sPriceType').value;
-            const price = document.getElementById('sPrice').value;
-            await _supabase.from('services').insert([{ name, price_type: type, base_price: price }]);
-            toggleModal('serviceModal', false); loadData();
+            await query; toggleModal('clientModal', false); loadData();
         }
 
         async function deleteClient() {
             const id = document.getElementById('editClientId').value;
-            if(confirm("Permanently remove this client?")) {
+            if(confirm("Permanently delete this client?")) {
                 await _supabase.from('clients').delete().eq('id', id);
                 toggleModal('clientModal', false); loadData();
-            }
-        }
-
-        async function deleteService(name) {
-            if(confirm(`Delete ${name} and all associated clients?`)) {
-                await _supabase.from('services').delete().eq('name', name);
-                await _supabase.from('clients').delete().eq('service_name', name);
-                loadData();
             }
         }
     </script>
