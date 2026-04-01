@@ -30,6 +30,7 @@
         .modal-content { background: var(--card); margin: 2% auto; padding: 30px; border: 1px solid var(--border); max-width: 500px; border-radius: 12px; }
         label { display: block; font-size: 0.65rem; color: #737373; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; font-weight: 600; }
         input, select { background: #000; border: 1px solid var(--border); color: white; padding: 12px; width: 100%; box-sizing: border-box; border-radius: 6px; outline: none; font-family: inherit; }
+        input:disabled { background: #111; color: #444; border-color: #1a1a1a; cursor: not-allowed; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .status-pill { padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; }
     </style>
@@ -59,15 +60,20 @@
 
     <div id="serviceModal" class="modal">
         <div class="modal-content">
-            <h3>New Service Configuration</h3>
-            <label>Service Name</label><input type="text" id="sName" placeholder="e.g. Premium Signals">
+            <h3 id="serviceModalTitle">Service Configuration</h3>
+            <input type="hidden" id="editServiceId">
+            <label>Service Name</label><input type="text" id="sName" placeholder="e.g. Gold Signals">
             <label>Pricing Type</label>
-            <select id="sPriceType"><option value="Fixed">Fixed Rate</option><option value="Variable">Variable Rate</option></select>
+            <select id="sPriceType" onchange="togglePriceInput(this.value)">
+                <option value="Fixed">Fixed Rate</option>
+                <option value="Variable">Variable Rate</option>
+            </select>
             <label>Default Price ($)</label><input type="number" id="sPrice" placeholder="0.00">
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="saveService()">CREATE SERVICE</button>
+                <button class="btn" style="flex:1" onclick="saveService()">SAVE CHANGES</button>
                 <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
             </div>
+            <button id="delServiceBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311;" onclick="deleteService()">DELETE SERVICE</button>
         </div>
     </div>
 
@@ -130,19 +136,19 @@
             document.getElementById('activeCount').innerText = clients.length;
         }
 
-        function calculateExpiry() {
-            const start = document.getElementById('cSubscribed').value;
-            const days = parseInt(document.getElementById('cDuration').value);
-            if(start && days) {
-                const d = new Date(start);
-                d.setDate(d.getDate() + days);
-                document.getElementById('cExpiry').value = d.toISOString().split('T')[0];
+        function togglePriceInput(type) {
+            const pInput = document.getElementById('sPrice');
+            if(type === "Variable") {
+                pInput.value = "";
+                pInput.disabled = true;
+            } else {
+                pInput.disabled = false;
             }
         }
 
         function renderDashboard(services, clients) {
             const dash = document.getElementById('dashboard');
-            dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services defined.</div>' : '';
+            dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services.</div>' : '';
 
             services.forEach(s => {
                 const sClients = clients.filter(c => c.service_name === s.name);
@@ -151,15 +157,18 @@
                 card.className = 'card';
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div><h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2><span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} SERVICE REVENUE</span></div>
+                        <div>
+                            <h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2>
+                            <span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} REVENUE</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick='openEditServiceModal(${JSON.stringify(s)})'>EDIT SERVICE</button>
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
                             <thead><tr><th>Name</th><th>Joined</th><th>Subscribed</th><th>Expiry</th><th>Paid</th><th>Status</th><th>Action</th></tr></thead>
                             <tbody>
                                 ${sClients.map(c => {
-                                    const diff = new Date(c.expiry_date) - new Date();
-                                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                                    const days = Math.ceil((new Date(c.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
                                     const col = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
                                     return `<tr>
                                         <td style="font-weight:600; color:white;">${c.name}</td>
@@ -168,7 +177,7 @@
                                         <td><span class="status-pill" style="background:${col}22; color:${col};">${days <= 0 ? 'EXPIRED' : days + 'd left'}</span></td>
                                         <td><button class="btn btn-outline btn-sm" onclick='openEditClientModal(${JSON.stringify(c)})'>MANAGE</button></td>
                                     </tr>`;
-                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients in this service.</td></tr>'}
+                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -181,22 +190,58 @@
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
 
         function openServiceModal() {
+            document.getElementById('serviceModalTitle').innerText = "Create New Service";
+            document.getElementById('editServiceId').value = '';
             document.getElementById('sName').value = '';
+            document.getElementById('sPriceType').value = 'Fixed';
             document.getElementById('sPrice').value = '';
+            document.getElementById('sPrice').disabled = false;
+            document.getElementById('delServiceBtn').style.display = 'none';
+            toggleModal('serviceModal', true);
+        }
+
+        function openEditServiceModal(s) {
+            document.getElementById('serviceModalTitle').innerText = "Modify Service: " + s.name;
+            document.getElementById('editServiceId').value = s.id;
+            document.getElementById('sName').value = s.name;
+            document.getElementById('sPriceType').value = s.price_type;
+            document.getElementById('sPrice').value = s.base_price;
+            document.getElementById('sPrice').disabled = (s.price_type === 'Variable');
+            document.getElementById('delServiceBtn').style.display = 'block';
             toggleModal('serviceModal', true);
         }
 
         async function saveService() {
+            const id = document.getElementById('editServiceId').value;
             const data = { 
                 name: document.getElementById('sName').value, 
                 price_type: document.getElementById('sPriceType').value, 
-                base_price: document.getElementById('sPrice').value 
+                base_price: document.getElementById('sPrice').value || 0
             };
-            if(!data.name) { alert("Enter a service name"); return; }
-            const { error } = await _supabase.from('services').insert([data]);
+            if(!data.name) return alert("Service name required");
+            
+            const query = id ? _supabase.from('services').update(data).eq('id', id) : _supabase.from('services').insert([data]);
+            const { error } = await query;
             if(error) alert(error.message);
-            toggleModal('serviceModal', false); 
-            loadData();
+            toggleModal('serviceModal', false); loadData();
+        }
+
+        async function deleteService() {
+            const id = document.getElementById('editServiceId').value;
+            if(confirm("DANGER: Deleting this service will not remove clients, but they will no longer appear in a category. Continue?")) {
+                await _supabase.from('services').delete().eq('id', id);
+                toggleModal('serviceModal', false); loadData();
+            }
+        }
+
+        function calculateExpiry() {
+            const start = document.getElementById('cSubscribed').value;
+            const days = parseInt(document.getElementById('cDuration').value);
+            if(start && days) {
+                const d = new Date(start);
+                d.setDate(d.getDate() + days);
+                document.getElementById('cExpiry').value = d.toISOString().split('T')[0];
+            }
         }
 
         function openAddClientModal(sName, price) {
@@ -230,7 +275,7 @@
 
         async function confirmAndSaveClient() {
             const id = document.getElementById('editClientId').value;
-            if(confirm(id ? "Confirm update to client data?" : "Register new client?")) {
+            if(confirm(id ? "Confirm update?" : "Register client?")) {
                 const data = {
                     name: document.getElementById('cName').value,
                     service_name: document.getElementById('targetService').value,
@@ -250,7 +295,7 @@
         async function deleteClient() {
             const id = document.getElementById('editClientId').value;
             const name = document.getElementById('cName').value;
-            if(confirm("PERMANENTLY DELETE CLIENT?")) {
+            if(confirm("DELETE CLIENT?")) {
                 await _supabase.from('clients').delete().eq('id', id);
                 sendTelegram(`🗑️ <b>Removed</b>: ${name}`);
                 toggleModal('clientModal', false); loadData();
