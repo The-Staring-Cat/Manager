@@ -20,15 +20,16 @@
         .stat-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 8px; }
         .stat-val { font-size: 1.5rem; font-weight: 600; color: var(--gold); }
         
-        .btn { background: var(--accent); color: #000; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
         .btn:hover { opacity: 0.8; transform: translateY(-1px); }
         .btn-outline { background: transparent; color: var(--silver); border: 1px solid var(--border); }
+        .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
         
         .grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
         
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 20px; }
-        th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 12px 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        th { text-align: left; color: #737373; border-bottom: 1px solid var(--border); padding: 12px 8px; font-weight: 600; text-transform: uppercase; }
         td { padding: 14px 8px; border-bottom: 1px solid #1f1f1f; }
         
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 50; backdrop-filter: blur(4px); overflow-y: auto; }
@@ -73,10 +74,9 @@
 
     <div id="serviceModal" class="modal">
         <div class="modal-content">
-            <h3 id="sModalTitle">Service Configuration</h3>
-            <input type="hidden" id="editServiceId">
+            <h3>New Service</h3>
             <label>Name</label>
-            <input type="text" id="sName" placeholder="Enter service name...">
+            <input type="text" id="sName" placeholder="Service name...">
             <label>Pricing Type</label>
             <select id="sPriceType">
                 <option value="Fixed">Fixed Rate</option>
@@ -85,10 +85,9 @@
             <label>Base Price ($)</label>
             <input type="number" id="sPrice" placeholder="0.00">
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="saveService()">SAVE SERVICE</button>
+                <button class="btn" style="flex:1" onclick="saveService()">CREATE SERVICE</button>
                 <button class="btn btn-outline" onclick="toggleModal('serviceModal', false)">CANCEL</button>
             </div>
-            <button id="delServiceBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311; display:none;" onclick="deleteServiceAction()">DELETE SERVICE</button>
         </div>
     </div>
 
@@ -102,7 +101,7 @@
             <input type="text" id="cName">
             <label>Amount Paid ($)</label>
             <input type="number" id="cPrice">
-            <label>Joined Date (First Day)</label>
+            <label>Joined Date</label>
             <input type="date" id="cJoined">
 
             <div class="row">
@@ -120,7 +119,7 @@
             <input type="date" id="cExpiry" readonly style="background:#111; color:#737373;">
 
             <div style="display: flex; gap: 10px; margin-top: 30px;">
-                <button class="btn" style="flex:1" onclick="saveClient()">SAVE DATA</button>
+                <button class="btn" style="flex:1" onclick="confirmAndSaveClient()">UPDATE DATA</button>
                 <button class="btn btn-outline" style="flex:1" onclick="toggleModal('clientModal', false)">CANCEL</button>
             </div>
             <button id="delClientBtn" class="btn" style="width:100%; margin-top:10px; background:transparent; color:var(--danger); border:1px solid #311;" onclick="deleteClient()">REMOVE CLIENT</button>
@@ -141,7 +140,7 @@
                 document.getElementById('terminalAuth').style.display = 'none';
                 document.getElementById('mainApp').classList.add('visible');
                 loadData();
-            } else { alert("ACCESS DENIED"); }
+            } else { alert("INVALID ACCESS PIN"); }
         }
 
         async function loadData() {
@@ -169,12 +168,7 @@
 
         function renderDashboard(services, clients) {
             const dash = document.getElementById('dashboard');
-            dash.innerHTML = '';
-            
-            if(services.length === 0) {
-                dash.innerHTML = '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services created.</div>';
-                return;
-            }
+            dash.innerHTML = services.length === 0 ? '<div style="text-align:center; padding:50px; border:1px dashed #333; border-radius:12px;">No services created.</div>' : '';
 
             services.forEach(s => {
                 const sClients = clients.filter(c => c.service_name === s.name);
@@ -185,10 +179,9 @@
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div>
-                            <h2 style="margin:0; font-size:1.2rem;">${s.name}</h2>
-                            <span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} SERVICE REVENUE</span>
+                            <h2 style="margin:0; font-size:1.2rem; color:white;">${s.name}</h2>
+                            <span style="font-size:0.75rem; color:var(--gold); font-weight:600;">$${sEarnings.toLocaleString()} REVENUE</span>
                         </div>
-                        <button class="btn btn-outline" onclick='openServiceModal(${JSON.stringify(s)})'>SETTINGS</button>
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
@@ -199,28 +192,24 @@
                                     <th>Subscribed</th>
                                     <th>Expiry</th>
                                     <th>Paid</th>
-                                    <th>Remaining</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${sClients.map(c => {
-                                    const diff = new Date(c.expiry_date) - new Date();
-                                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-                                    const statusColor = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
-                                    
-                                    return `<tr onclick='openEditClientModal(${JSON.stringify(c)})' style="cursor:pointer;">
+                                    const days = Math.ceil((new Date(c.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+                                    const color = days <= 0 ? 'var(--danger)' : (days <= 5 ? '#f97316' : 'var(--success)');
+                                    return `<tr>
                                         <td style="font-weight:600; color:white;">${c.name}</td>
                                         <td>${c.joined_date}</td>
                                         <td>${c.subscribed_date}</td>
                                         <td>${c.expiry_date}</td>
                                         <td style="color:var(--gold); font-weight:600;">$${c.price_paid}</td>
-                                        <td>
-                                            <span class="status-pill" style="background: ${statusColor}22; color: ${statusColor};">
-                                                ${days <= 0 ? 'EXPIRED' : days + ' Days'}
-                                            </span>
-                                        </td>
+                                        <td><span class="status-pill" style="background:${color}22; color:${color};">${days <= 0 ? 'EXPIRED' : days + 'd left'}</span></td>
+                                        <td><button class="btn btn-outline btn-sm" onclick='openEditClientModal(${JSON.stringify(c)})'>MANAGE</button></td>
                                     </tr>`;
-                                }).join('') || '<tr><td colspan="6" style="text-align:center; padding:30px; color:#444;">No clients found.</td></tr>'}
+                                }).join('') || '<tr><td colspan="7" style="text-align:center; color:#444; padding:20px;">No clients registered.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -232,39 +221,19 @@
 
         function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
 
-        function openServiceModal(s = null) {
-            document.getElementById('sModalTitle').innerText = s ? "Edit Service" : "New Service";
-            document.getElementById('editServiceId').value = s ? s.id : '';
-            document.getElementById('sName').value = s ? s.name : '';
-            document.getElementById('sPriceType').value = s ? s.price_type : 'Fixed';
-            document.getElementById('sPrice').value = s ? s.base_price : '';
-            document.getElementById('delServiceBtn').style.display = s ? 'block' : 'none';
-            toggleModal('serviceModal', true);
-        }
-
         async function saveService() {
-            const id = document.getElementById('editServiceId').value;
             const data = { 
                 name: document.getElementById('sName').value, 
                 price_type: document.getElementById('sPriceType').value, 
                 base_price: document.getElementById('sPrice').value 
             };
-            if(!data.name) return alert("Name is required");
-            const query = id ? _supabase.from('services').update(data).eq('id', id) : _supabase.from('services').insert([data]);
-            await query; toggleModal('serviceModal', false); loadData();
-        }
-
-        async function deleteServiceAction() {
-            const name = document.getElementById('sName').value;
-            if(confirm(`Wipe "${name}"? This deletes ALL clients in this service!`)) {
-                await _supabase.from('services').delete().eq('name', name);
-                await _supabase.from('clients').delete().eq('service_name', name);
-                toggleModal('serviceModal', false); loadData();
-            }
+            if(!data.name) return;
+            await _supabase.from('services').insert([data]);
+            toggleModal('serviceModal', false); loadData();
         }
 
         function openAddClientModal(sName, price) {
-            document.getElementById('clientModalTitle').innerText = "New Client Entry";
+            document.getElementById('clientModalTitle').innerText = "Register New Client";
             document.getElementById('editClientId').value = '';
             document.getElementById('targetService').value = sName;
             document.getElementById('cName').value = '';
@@ -279,7 +248,7 @@
         }
 
         function openEditClientModal(c) {
-            document.getElementById('clientModalTitle').innerText = "Edit " + c.name;
+            document.getElementById('clientModalTitle').innerText = "Update: " + c.name;
             document.getElementById('editClientId').value = c.id;
             document.getElementById('targetService').value = c.service_name;
             document.getElementById('cName').value = c.name;
@@ -292,24 +261,30 @@
             toggleModal('clientModal', true);
         }
 
-        async function saveClient() {
-            const id = document.getElementById('editClientId').value;
-            const data = {
-                name: document.getElementById('cName').value,
-                service_name: document.getElementById('targetService').value,
-                price_paid: document.getElementById('cPrice').value,
-                joined_date: document.getElementById('cJoined').value,
-                subscribed_date: document.getElementById('cSubscribed').value,
-                duration: document.getElementById('cDuration').value,
-                expiry_date: document.getElementById('cExpiry').value
-            };
-            const query = id ? _supabase.from('clients').update(data).eq('id', id) : _supabase.from('clients').insert([data]);
-            await query; toggleModal('clientModal', false); loadData();
+        async function confirmAndSaveClient() {
+            const isUpdate = document.getElementById('editClientId').value !== '';
+            const msg = isUpdate ? "Confirm update to this client's profile?" : "Register this new client?";
+            
+            if(confirm(msg)) {
+                const id = document.getElementById('editClientId').value;
+                const data = {
+                    name: document.getElementById('cName').value,
+                    service_name: document.getElementById('targetService').value,
+                    price_paid: document.getElementById('cPrice').value,
+                    joined_date: document.getElementById('cJoined').value,
+                    subscribed_date: document.getElementById('cSubscribed').value,
+                    duration: document.getElementById('cDuration').value,
+                    expiry_date: document.getElementById('cExpiry').value
+                };
+                const query = id ? _supabase.from('clients').update(data).eq('id', id) : _supabase.from('clients').insert([data]);
+                const { error } = await query;
+                if(error) alert(error.message); else { toggleModal('clientModal', false); loadData(); }
+            }
         }
 
         async function deleteClient() {
             const id = document.getElementById('editClientId').value;
-            if(confirm("Permanently delete this client?")) {
+            if(confirm("PERMANENTLY REMOVE CLIENT? This cannot be undone.")) {
                 await _supabase.from('clients').delete().eq('id', id);
                 toggleModal('clientModal', false); loadData();
             }
